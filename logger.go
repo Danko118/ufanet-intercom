@@ -1,83 +1,63 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	buffer   bytes.Buffer
-	logFile  *os.File
-	filePath string
+	logger  = logrus.New()
+	logFile *os.File
+	fileMux sync.Mutex
 )
 
-type bufferHook struct{}
+type fileHook struct{}
 
-func (h *bufferHook) Levels() []logrus.Level {
+func (h *fileHook) Levels() []logrus.Level {
 	return logrus.AllLevels
 }
 
-func (h *bufferHook) Fire(entry *logrus.Entry) error {
+func (h *fileHook) Fire(entry *logrus.Entry) error {
 	line, err := entry.Logger.Formatter.Format(entry)
 	if err != nil {
 		return err
 	}
-	buffer.Write(line)
+
+	fileMux.Lock()
+	defer fileMux.Unlock()
+
+	if logFile != nil {
+		if _, err := logFile.Write(line); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func LoggerInit() func() {
-	logrus.SetFormatter(&logrus.JSONFormatter{
-		TimestampFormat: time.RFC3339,
-	})
-	logrus.SetOutput(os.Stdout)
-
-	// Добавляем хук в логрус
-	logrus.AddHook(&bufferHook{})
-
-	// Возврат функции сохранения JSON-массива
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
-	filePath = "./logs/log_" + timestamp + ".json"
+	filename := "./logs/" + timestamp + ".log"
 
 	var err error
-	logFile, err = os.Create(filePath)
+	logFile, err = os.Create(filename)
 	if err != nil {
 		panic(err)
 	}
 
-	logrus.SetFormatter(&logrus.JSONFormatter{
+	logger.SetFormatter(&logrus.JSONFormatter{
 		TimestampFormat: time.RFC3339,
 	})
-	logrus.SetOutput(os.Stdout) // stdout для разработчика
+	logger.SetOutput(os.Stdout)
+	logger.AddHook(&fileHook{})
 
-	logrus.AddHook(&bufferHook{}) // буферизация
-
-	logrus.Info("Логгер инициализирован")
+	logger.Info("Логгер инициализирован")
 
 	return func() {
-		defer logFile.Close()
-
-		lines := bytes.Split(buffer.Bytes(), []byte{'\n'})
-		var logs []json.RawMessage
-		for _, line := range lines {
-			if len(line) == 0 {
-				continue
-			}
-			logs = append(logs, json.RawMessage(line))
-		}
-
-		wrapped := map[string]interface{}{
-			"logs": logs,
-		}
-
-		enc := json.NewEncoder(logFile)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(wrapped); err != nil {
-			panic(err)
+		if logFile != nil {
+			logFile.Close()
 		}
 	}
 }

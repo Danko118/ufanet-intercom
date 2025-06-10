@@ -2,18 +2,14 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	finalize := LoggerInit()
-	logrus.WithFields(logrus.Fields{
-		"state":  "Init",
-		"status": "Success",
-	}).Info("Логгер инициализирован успешно")
-	defer finalize()
+	defer LoggerInit()()
 
 	// defer db.Close()
 
@@ -42,11 +38,45 @@ func main() {
 
 	// WebSocket обработчик
 	// http.HandleFunc("/", websocketConnect)
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Hello, Go!")
+		logger.WithFields(logrus.Fields{
+			"state":    "Response",
+			"status":   "Responded",
+			"service":  "Web-server",
+			"endpoint": "/",
+		}).Info("Ответ отправлен клиенту")
 	})
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
 
+	listener, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		logger.WithFields(logrus.Fields{
+			"state":   "Init",
+			"status":  "Error",
+			"service": "Web-server",
+			"error":   err.Error(),
+		}).Fatal("Не удалось занять порт 8080")
+		return
 	}
+
+	go func() {
+		err := http.Serve(listener, nil)
+		if err != nil {
+			logger.WithFields(logrus.Fields{
+				"state":   "Runtime",
+				"status":  "Error",
+				"service": "Web-server",
+				"error":   err.Error(),
+			}).Error("Сервер остановлен с ошибкой")
+		}
+	}()
+
+	logger.WithFields(logrus.Fields{
+		"state":   "Init",
+		"status":  "Success",
+		"service": "Web-server",
+	}).Info("Web-сервер запущен на :8080")
+
+	select {}
 }

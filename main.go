@@ -4,40 +4,41 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
+
 	defer LoggerInit()()
+	MqttInit()
+	defer mqttClient.Disconnect(250)
 
 	// defer db.Close()
 
-	// mqttClient.Subscribe("#", 0, func(client mqtt.Client, msg mqtt.Message) {
-	// 	log.Print("[Информация] {Новое сообщение} MQTT")
-	// 	switch msg.Topic()[:strings.Index(msg.Topic(), "/")] {
-	// 	case "Devices":
-	// 		if err := ProcessMQTTDeviceData(strings.Split(msg.Topic(), "/")[1], string(msg.Payload())); err == nil {
-	// 			log.Print("[Успешно] {Сообщение обработано} MQTT")
-	// 		} else {
-	// 			log.Printf("[Ошибка] {Этап: Обработка сообщения с MQTT} MQTT: %s", err)
-	// 		}
-	// 	case "Values":
-	// 		err := InsertValue(strings.Split(msg.Topic(), "/")[1], string(msg.Payload()))
-	// 		if err != nil {
-	// 			log.Fatalf("[Ошибка] {Этап: Получение данных из DB}: %v", err)
-	// 		} else {
-	// 			log.Print("[Успешно] {Сообщение обработано} MQTT")
-	// 		}
-	// 	default:
-	// 		log.Fatalf("[Ошибка] {Неверное сообщение MQTT} MQTT")
+	mqttClient.Subscribe("#", 0, func(client mqtt.Client, msg mqtt.Message) {
+		switch msg.Topic()[:strings.Index(msg.Topic(), "/")] {
+		case "intercoms":
+			logger.WithFields(logrus.Fields{
+				"state":   "Msg",
+				"status":  "Received",
+				"service": "Mqtt-client",
+				"topic":   msg.Topic(),
+				"msg":     string(msg.Payload()),
+			}).Info("Получено новое сообщение от Mqtt клиента")
+		default:
+			logger.WithFields(logrus.Fields{
+				"state":   "Msg",
+				"status":  "Received",
+				"service": "Mqtt-client",
+				"topic":   msg.Topic(),
+				"msg":     string(msg.Payload()),
+			}).Warn("Получено новое сообщение от Mqtt клиента, но неизвестный топик")
 
-	// 	}
-	// 	sendMessageToAllClients()
-	// })
-
-	// WebSocket обработчик
-	// http.HandleFunc("/", websocketConnect)
+		}
+	})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Hello, Go!")

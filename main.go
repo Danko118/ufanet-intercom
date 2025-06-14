@@ -22,19 +22,28 @@ func main() {
 		switch msg.Topic()[:strings.Index(msg.Topic(), "/")] {
 		case "intercoms":
 			logger.WithFields(logrus.Fields{
-				"state":   "Msg",
-				"status":  "Received",
-				"service": "Mqtt-client",
-				"topic":   msg.Topic(),
-				"msg":     string(msg.Payload()),
+				"state":    "Msg",
+				"status":   "Received",
+				"service":  "Mqtt-client",
+				"topic":    msg.Topic(),
+				"mqtt-msg": string(msg.Payload()),
 			}).Info("Получено новое сообщение от Mqtt клиента")
+			err := ProcessMQTTData(string(msg.Payload()))
+			if err != nil {
+				logger.WithFields(logrus.Fields{
+					"state":   "Unmarhall-JSON",
+					"status":  "Error",
+					"service": "Mqtt-client",
+					"error":   err.Error(),
+				}).Error("Не удалось обработать mqtt сообщение")
+			}
 		default:
 			logger.WithFields(logrus.Fields{
-				"state":   "Msg",
-				"status":  "Received",
-				"service": "Mqtt-client",
-				"topic":   msg.Topic(),
-				"msg":     string(msg.Payload()),
+				"state":    "Msg",
+				"status":   "Received",
+				"service":  "Mqtt-client",
+				"topic":    msg.Topic(),
+				"mqtt-msg": string(msg.Payload()),
 			}).Warn("Получено новое сообщение от Mqtt клиента, но неизвестный топик")
 
 		}

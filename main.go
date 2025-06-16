@@ -15,8 +15,8 @@ func main() {
 	defer LoggerInit()()
 	MqttInit()
 	defer mqttClient.Disconnect(250)
-
-	// defer db.Close()
+	PSQLInit()
+	defer db.Close()
 
 	mqttClient.Subscribe("#", 0, func(client mqtt.Client, msg mqtt.Message) {
 		switch msg.Topic()[:strings.Index(msg.Topic(), "/")] {

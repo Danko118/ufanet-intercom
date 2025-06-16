@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -38,6 +39,14 @@ func (h *fileHook) Fire(entry *logrus.Entry) error {
 }
 
 func LoggerInit() func() {
+	logDir := "./logs"
+	if _, err := os.Stat(logDir); os.IsNotExist(err) {
+		err := os.MkdirAll(logDir, 0755)
+		if err != nil {
+			panic(fmt.Sprintf("Не удалось создать директорию логов: %v", err))
+		}
+	}
+
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	filename := "./logs/" + timestamp + ".log"
 

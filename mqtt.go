@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/sirupsen/logrus"
 )
@@ -27,16 +25,4 @@ func MqttInit() {
 		"status":  "Success",
 		"service": "Mqtt-client",
 	}).Info("Успешно подклченно к MQTT")
-}
-
-func ProcessMQTTData(jsonData string) error {
-
-	var intercom Intercom
-
-	err := json.Unmarshal([]byte(jsonData), &intercom)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

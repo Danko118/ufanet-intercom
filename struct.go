@@ -1,10 +1,9 @@
 package main
 
-type Apart struct {
-	ID int64 `json:"id"`
-}
-
 type Intercom struct {
 	Address string  `json:"address"`
-	Aparts  []Apart `json:"aparts"`
+	Aparts  []int64 `json:"aparts"`
+	Vendor  string  `json:"vendor"`
+
+	MAC string `json:"-"`
 }

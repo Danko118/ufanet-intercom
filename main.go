@@ -21,6 +21,7 @@ func main() {
 	mqttClient.Subscribe("#", 0, func(client mqtt.Client, msg mqtt.Message) {
 		switch msg.Topic()[:strings.Index(msg.Topic(), "/")] {
 		case "intercoms":
+			// получили нужный топик
 			logger.WithFields(logrus.Fields{
 				"state":    "Msg",
 				"status":   "Received",
@@ -28,7 +29,8 @@ func main() {
 				"topic":    msg.Topic(),
 				"mqtt-msg": string(msg.Payload()),
 			}).Info("Получено новое сообщение от Mqtt клиента")
-			err := ProcessMQTTData(string(msg.Payload()))
+			// попытка обработать
+			err := IntercomAppend(msg)
 			if err != nil {
 				logger.WithFields(logrus.Fields{
 					"state":   "Unmarhall-JSON",
@@ -37,6 +39,11 @@ func main() {
 					"error":   err.Error(),
 				}).Error("Не удалось обработать mqtt сообщение")
 			}
+			logger.WithFields(logrus.Fields{
+				"state":   "Msg",
+				"status":  "Unmarshled",
+				"service": "Mqtt-client",
+			}).Info("Сообщение успешно обработано")
 		default:
 			logger.WithFields(logrus.Fields{
 				"state":    "Msg",

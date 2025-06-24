@@ -1,6 +1,9 @@
 package main
 
 import (
+	"errors"
+	"strings"
+
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/sirupsen/logrus"
 )
@@ -25,4 +28,85 @@ func MqttInit() {
 		"status":  "Success",
 		"service": "Mqtt-client",
 	}).Info("Успешно подклченно к MQTT")
+}
+
+func TopicResolve(msg mqtt.Message) {
+	var mqttMessage = strings.Split(string(msg.Topic()), "/")
+
+	switch mqttMessage[2] {
+	case "init":
+		err := IntercomAppend(msg)
+		if err != nil {
+			logger.WithFields(logrus.Fields{
+				"state":   "Unmarhall-JSON",
+				"status":  "Error",
+				"service": "Mqtt-client",
+				"error":   err.Error(),
+			}).Error("Не удалось обработать mqtt сообщение")
+		} else {
+			logger.WithFields(logrus.Fields{
+				"state":   "Message",
+				"status":  "Success",
+				"service": "Mqtt-client",
+			}).Info("Сообщение успешно обработано")
+		}
+	case "status":
+		err := AppendState(msg)
+		if err != nil {
+			logger.WithFields(logrus.Fields{
+				"state":   "Unmarhall-JSON",
+				"status":  "Error",
+				"service": "Mqtt-client",
+				"error":   err.Error(),
+			}).Error("Не удалось обработать mqtt сообщение")
+		} else {
+			logger.WithFields(logrus.Fields{
+				"state":   "Message",
+				"status":  "Success",
+				"service": "Mqtt-client",
+			}).Info("Сообщение успешно обработано")
+		}
+	case "events":
+		err := EventResolve(mqttMessage[3], string(msg.Payload()), mqttMessage[1])
+		if err != nil {
+			logger.WithFields(logrus.Fields{
+				"state":   "Unmarhall-JSON",
+				"status":  "Error",
+				"service": "Mqtt-client",
+				"error":   err.Error(),
+			}).Error("Не удалось обработать mqtt сообщение")
+		} else {
+			logger.WithFields(logrus.Fields{
+				"state":   "Message",
+				"status":  "Success",
+				"service": "Mqtt-client",
+			}).Info("Ивент успешно обработан")
+		}
+	default:
+		logger.WithFields(logrus.Fields{
+			"state":   "Message",
+			"status":  "Error",
+			"service": "Mqtt-client",
+		}).Error("Не удалось обработать mqtt сообщение, неизвестный топик третьего уровня")
+	}
+
+}
+
+func EventResolve(event string, payload string, mac string) error {
+
+	switch event {
+	case "door":
+		err := EventAppend(payload, mac)
+		if err != nil {
+			return err
+		}
+	case "call":
+		err := EventAppend(payload, mac)
+		if err != nil {
+			return err
+		}
+	default:
+		return errors.New("Неизвестный топик четвертого уровня.")
+	}
+	return nil
 }

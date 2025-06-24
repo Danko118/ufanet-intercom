@@ -1,9 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"net"
-	"net/http"
 	"strings"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -17,6 +14,7 @@ func main() {
 	defer mqttClient.Disconnect(250)
 	PSQLInit()
 	defer db.Close()
+	HttpInit()
 
 	mqttClient.Subscribe("#", 0, func(client mqtt.Client, msg mqtt.Message) {
 		switch msg.Topic()[:strings.Index(msg.Topic(), "/")] {
@@ -30,15 +28,7 @@ func main() {
 				"mqtt-msg": string(msg.Payload()),
 			}).Info("Получено новое сообщение от Mqtt клиента")
 			// попытка обработать
-			err := IntercomAppend(msg)
-			if err != nil {
-				logger.WithFields(logrus.Fields{
-					"state":   "Unmarhall-JSON",
-					"status":  "Error",
-					"service": "Mqtt-client",
-					"error":   err.Error(),
-				}).Error("Не удалось обработать mqtt сообщение")
-			}
+			TopicResolve(msg)
 			logger.WithFields(logrus.Fields{
 				"state":   "Msg",
 				"status":  "Unmarshled",
@@ -55,45 +45,6 @@ func main() {
 
 		}
 	})
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, Go!")
-		logger.WithFields(logrus.Fields{
-			"state":    "Response",
-			"status":   "Responded",
-			"service":  "Web-server",
-			"endpoint": "/",
-		}).Info("Ответ отправлен клиенту")
-	})
-
-	listener, err := net.Listen("tcp", ":8080")
-	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"state":   "Init",
-			"status":  "Error",
-			"service": "Web-server",
-			"error":   err.Error(),
-		}).Fatal("Не удалось занять порт 8080")
-		return
-	}
-
-	go func() {
-		err := http.Serve(listener, nil)
-		if err != nil {
-			logger.WithFields(logrus.Fields{
-				"state":   "Runtime",
-				"status":  "Error",
-				"service": "Web-server",
-				"error":   err.Error(),
-			}).Error("Сервер остановлен с ошибкой")
-		}
-	}()
-
-	logger.WithFields(logrus.Fields{
-		"state":   "Init",
-		"status":  "Success",
-		"service": "Web-server",
-	}).Info("Web-сервер запущен на :8080")
 
 	select {}
 }

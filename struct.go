@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 type Intercom struct {
 	Address string  `json:"address,omitempty"`
 	Aparts  []int64 `json:"aparts,omitempty"`
@@ -9,8 +11,9 @@ type Intercom struct {
 }
 
 type Event struct {
-	Name string `json:"event,omitempty"`
-	Args int    `json:"arg,omitempty"`
-	Desc string `json:"desc,omitempty"`
-	MAC  string `json:"mac,omitempty"`
+	Name string    `json:"event,omitempty"`
+	Args int       `json:"arg,omitempty"`
+	Desc string    `json:"desc,omitempty"`
+	MAC  string    `json:"mac,omitempty"`
+	Time time.Time `json:"time,omitempty"`
 }

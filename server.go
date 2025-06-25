@@ -44,6 +44,21 @@ func intercomHandler(w http.ResponseWriter, r *http.Request) {
 	}).Info("Ответ отправлен клиенту")
 }
 
+func openIntercom(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	mac := vars["mac"]
+	OpenEvent(mac)
+	fmt.Fprint(w, "Дверь открыта")
+}
+
+func callIntercom(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	mac := vars["mac"]
+	id := vars["id"]
+	CallEvent(mac, id)
+	fmt.Fprint(w, "Звонок запущен")
+}
+
 func eventsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	mac := vars["mac"]
@@ -84,6 +99,8 @@ func HttpInit() {
 	var err error
 
 	router.HandleFunc("/intercom/{mac}", intercomHandler)
+	router.HandleFunc("/intercom/{mac}/open", openIntercom)
+	router.HandleFunc("/intercom/{mac}/call/{id}", callIntercom)
 	router.HandleFunc("/events/{mac}", eventsHandler)
 
 	http.Handle("/", router)

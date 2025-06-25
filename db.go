@@ -46,15 +46,15 @@ func QueryToStruct(query string, args []interface{}, destFunc func(rows *sql.Row
 
 func FecthEvents(mac string) ([]Event, error) {
 	var events []Event
-	query := fmt.Sprintf(`SELECT mac, event_name, event_args, event_desc
+	query := fmt.Sprintf(`SELECT mac, event_name, event_args, event_desc, event_time
 	          FROM events 
               WHERE mac='%s'
-			  ORDER BY event_time;`, mac)
+			  ORDER BY event_time DESC;`, mac)
 
 	err := QueryToStruct(query, nil, func(rows *sql.Rows) error {
 		for rows.Next() {
 			var evnt Event
-			if err := rows.Scan(&evnt.MAC, &evnt.Name, &evnt.Args, &evnt.Desc); err != nil {
+			if err := rows.Scan(&evnt.MAC, &evnt.Name, &evnt.Args, &evnt.Desc, &evnt.Time); err != nil {
 				return err
 			}
 			events = append(events, evnt)

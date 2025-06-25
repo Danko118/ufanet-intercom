@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -92,6 +93,18 @@ func TopicResolve(msg mqtt.Message) {
 
 }
 
+func OpenEvent(mac string) {
+	var topic = fmt.Sprintf("intercoms/%s/control/door", mac)
+	token := mqttClient.Publish(topic, 0, false, "1")
+	token.Wait()
+}
+
+func CallEvent(mac string, id string) {
+	var topic = fmt.Sprintf("intercoms/%s/control/call", mac)
+	token := mqttClient.Publish(topic, 0, false, id)
+	token.Wait()
+}
+
 func EventResolve(event string, payload string, mac string) error {
 
 	switch event {
@@ -106,7 +119,7 @@ func EventResolve(event string, payload string, mac string) error {
 			return err
 		}
 	default:
-		return errors.New("Неизвестный топик четвертого уровня.")
+		return errors.New("неизвестный топик четвертого уровня")
 	}
 	return nil
 }

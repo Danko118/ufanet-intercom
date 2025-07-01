@@ -9,7 +9,27 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func withCORS(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Устанавливаем CORS-заголовки
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// Если это preflight-запрос, просто отвечаем 200 OK
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Иначе продолжаем выполнение
+		handler(w, r)
+	}
+}
+
 func intercomHandler(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
 	mac := vars["mac"]
 	var intr *Intercom
@@ -45,6 +65,7 @@ func intercomHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func openIntercom(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
 	mac := vars["mac"]
 	OpenEvent(mac)
@@ -52,6 +73,7 @@ func openIntercom(w http.ResponseWriter, r *http.Request) {
 }
 
 func callIntercom(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
 	mac := vars["mac"]
 	id := vars["id"]
@@ -60,6 +82,7 @@ func callIntercom(w http.ResponseWriter, r *http.Request) {
 }
 
 func eventsHandler(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
 	mac := vars["mac"]
 	var events []Event
@@ -94,46 +117,49 @@ func eventsHandler(w http.ResponseWriter, r *http.Request) {
 	}).Info("Ответ отправлен клиенту")
 }
 
+func GETIntercoms(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var fetchedintr []Intercom
+	fetchedintr, err = FecthIntercoms()
+	if err != nil {
+		logger.WithFields(logrus.Fields{
+			"state":   "Fetching",
+			"status":  "Error",
+			"service": "DB",
+			"error":   err.Error(),
+		}).Fatal("Не удалось получить данные из базы данных")
+	}
+
+	var intr string
+	intr, err = interfaceToData(fetchedintr)
+	if err != nil {
+		logger.WithFields(logrus.Fields{
+			"state":   "Unmarshling",
+			"status":  "Error",
+			"service": "DB",
+			"error":   err.Error(),
+		}).Fatal("Не удалось обработать данные")
+	}
+	fmt.Fprintf(w, intr)
+	logger.WithFields(logrus.Fields{
+		"state":    "Response",
+		"status":   "Responded",
+		"service":  "Web-server",
+		"endpoint": "/intercoms",
+	}).Info("Ответ отправлен клиенту")
+}
+
 func HttpInit() {
 	router := mux.NewRouter()
 	var err error
 
-	router.HandleFunc("/intercom/{mac}", intercomHandler)
-	router.HandleFunc("/intercom/{mac}/open", openIntercom)
-	router.HandleFunc("/intercom/{mac}/call/{id}", callIntercom)
-	router.HandleFunc("/events/{mac}", eventsHandler)
+	router.HandleFunc("/intercoms", withCORS(GETIntercoms))
+	router.HandleFunc("/intercom/{mac}", withCORS(intercomHandler))
+	router.HandleFunc("/intercom/{mac}/open", withCORS(openIntercom))
+	router.HandleFunc("/intercom/{mac}/call/{id}", withCORS(callIntercom))
+	router.HandleFunc("/events/{mac}", withCORS(eventsHandler))
 
 	http.Handle("/", router)
-	http.HandleFunc("/intercoms", func(w http.ResponseWriter, r *http.Request) {
-		var fetchedintr []Intercom
-		fetchedintr, err = FecthIntercoms()
-		if err != nil {
-			logger.WithFields(logrus.Fields{
-				"state":   "Fetching",
-				"status":  "Error",
-				"service": "DB",
-				"error":   err.Error(),
-			}).Fatal("Не удалось получить данные из базы данных")
-		}
-
-		var intr string
-		intr, err = interfaceToData(fetchedintr)
-		if err != nil {
-			logger.WithFields(logrus.Fields{
-				"state":   "Unmarshling",
-				"status":  "Error",
-				"service": "DB",
-				"error":   err.Error(),
-			}).Fatal("Не удалось обработать данные")
-		}
-		fmt.Fprintf(w, intr)
-		logger.WithFields(logrus.Fields{
-			"state":    "Response",
-			"status":   "Responded",
-			"service":  "Web-server",
-			"endpoint": "/intercoms",
-		}).Info("Ответ отправлен клиенту")
-	})
 
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {

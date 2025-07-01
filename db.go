@@ -97,13 +97,19 @@ func FecthIntercom(intercomMAC string) (*Intercom, error) {
 
 func FecthIntercoms() ([]Intercom, error) {
 	var intercoms []Intercom
-	query := `SELECT i.mac
-	          FROM intercoms i;`
+	query := `SELECT DISTINCT ON (i.mac)
+       i.mac,
+       i.address,
+	   i.vendor,
+       s.status
+FROM intercoms i
+JOIN intercomStatus s ON i.mac = s.mac
+ORDER BY i.mac, s.time DESC;`
 
 	err := QueryToStruct(query, nil, func(rows *sql.Rows) error {
 		for rows.Next() {
 			var intr Intercom
-			if err := rows.Scan(&intr.MAC); err != nil {
+			if err := rows.Scan(&intr.MAC, &intr.Address, &intr.Vendor, &intr.Status); err != nil {
 				return err
 			}
 			intercoms = append(intercoms, intr)

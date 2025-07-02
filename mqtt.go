@@ -12,7 +12,9 @@ import (
 var mqttClient mqtt.Client
 
 func MqttInit() {
-	opts := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("mqtt-golang")
+	cfg := LoadConfig()
+
+	opts := mqtt.NewClientOptions().AddBroker(cfg.MQTTBroker).SetClientID("mqtt-golang")
 	mqttc := mqtt.NewClient(opts)
 
 	if token := mqttc.Connect(); token.Wait() && token.Error() != nil {

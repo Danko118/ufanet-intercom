@@ -150,6 +150,7 @@ func GETIntercoms(w http.ResponseWriter, r *http.Request) {
 }
 
 func HttpInit() {
+	cfg := LoadConfig()
 	router := mux.NewRouter()
 	var err error
 
@@ -161,14 +162,16 @@ func HttpInit() {
 
 	http.Handle("/", router)
 
-	listener, err := net.Listen("tcp", ":8080")
+	var port = fmt.Sprintf(":%s", cfg.AppPort)
+
+	listener, err := net.Listen("tcp", port)
 	if err != nil {
 		logger.WithFields(logrus.Fields{
 			"state":   "Init",
 			"status":  "Error",
 			"service": "Web-server",
 			"error":   err.Error(),
-		}).Fatal("Не удалось занять порт 8080")
+		}).Fatal("Не удалось занять порт")
 		return
 	}
 
@@ -188,6 +191,6 @@ func HttpInit() {
 		"state":   "Init",
 		"status":  "Success",
 		"service": "Web-server",
-	}).Info("Web-сервер запущен на :8080")
+	}).Info("Web-сервер запущен")
 
 }
